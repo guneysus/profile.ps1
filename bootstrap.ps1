@@ -1,0 +1,4 @@
+<#
+	posh-git
+	ZLocation
+#>
