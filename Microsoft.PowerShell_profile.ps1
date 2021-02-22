@@ -162,4 +162,10 @@ set-content Function:prompt {
     return " "
 }
 
-$env:PATH +=(-join(";", (Join-Path ([System.IO.FileInfo]$PROFILE).Directory "bin")))
+## -- path
+$env:PATH +=-join(";", (Join-Path ([System.IO.FileInfo]$PROFILE).Directory "bin"))
+
+
+function Set-ProfileDirectory {
+  cd ([System.IO.FileInfo]$PROFILE).Directory
+}
