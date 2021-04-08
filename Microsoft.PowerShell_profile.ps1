@@ -164,8 +164,81 @@ set-content Function:prompt {
 
 ## -- path
 $env:PATH +=-join(";", (Join-Path ([System.IO.FileInfo]$PROFILE).Directory "bin"))
-
+$env:PATH +=";C:\Users\aguneysu\AppData\Roaming\Python\Python39\Scripts"
+$env:PATH +=";c:\users\aguneysu\scoop\apps\python\3.9.1\Scripts"
+$env:PATH +=";C:\Users\aguneysu\.local\bin"
 
 function Set-ProfileDirectory {
   cd ([System.IO.FileInfo]$PROFILE).Directory
+}
+
+function Get-Bytes () {
+  Param(
+    [parameter(mandatory=$true)][string]$text
+  )
+  $bytes=[System.Text.Encoding]::UTF8.GetBytes($text)
+  echo $bytes
+}
+
+function Get-Key () {
+  Param(
+    [parameter(mandatory=$true)][string]$pass,
+    [parameter(mandatory=$true)][string]$salt
+  )
+  $saltBytes=get-bytes $salt
+  $passDerive = New-Object Security.Cryptography.Rfc2898DeriveBytes -ArgumentList @($pass, $saltBytes)
+  
+  $keySize = 256
+  $key = $passDerive.GetBytes($keySize / 8)
+  echo $key
+}
+
+function Get-AesEncrypted () {
+  Param(
+    [parameter(mandatory=$true)][string]$pass,
+    [parameter(mandatory=$true)][string]$salt,
+    [parameter(mandatory=$true)][string]$text
+  )
+  $saltBytes=get-bytes $salt
+  $passDerive = New-Object Security.Cryptography.Rfc2898DeriveBytes -ArgumentList @($pass, $saltBytes)
+  
+  $key = $passDerive.GetBytes(32)
+  $IV = $passDerive.GetBytes(16)
+  
+  $cipher = [Security.Cryptography.SymmetricAlgorithm]::Create('AesManaged')
+  $cipher.Mode = [Security.Cryptography.CipherMode]::CBC
+  
+  $encryptor = $cipher.CreateEncryptor($key, $IV)
+  $memoryStream = New-Object -TypeName IO.MemoryStream
+  
+  $cryptoStream = New-Object -TypeName Security.Cryptography.CryptoStream -ArgumentList @( $memoryStream, $encryptor, [System.Security.Cryptography.CryptoStreamMode]::Write)
+  
+  $strBytes=(Get-Bytes $text)
+  
+  $cryptoStream.Write($strBytes, 0, $strBytes.Length)
+  $cryptoStream.FlushFinalBlock()
+  $encryptedBytes = $memoryStream.ToArray()
+
+  # Base64 Encode the encrypted bytes to get a string
+  $encryptedString = [Convert]::ToBase64String($encryptedBytes)
+  
+  echo $encryptedString
+}
+
+function Get-QrLink () {
+  Param(
+    [parameter(mandatory=$true)][string]$text
+  )
+  $result="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${text}"
+  echo $result
+}
+
+function Generate-Qr () {
+  $file="C:\Users\aguneysu\Documents\wiki\tasks\PICR-390 Image Recognition Backend API Connection\qr-codes.txt"
+  cat $file | % { 
+   $text=$_
+   $pass=Get-AesEncrypted -pass "7B801AA7-1EBA-4672-8849-7E6B977043B8" -salt "Ivan Medvedev" -text $text
+   $qrLink=Get-QrLink $pass
+   echo $qrLink
+  }
 }
